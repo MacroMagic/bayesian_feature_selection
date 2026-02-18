@@ -112,7 +112,6 @@ class HorseshoeGLM:
         self,
         family: Literal["gaussian", "binomial", "poisson"] = "gaussian",
         scale_global: float = 1.0,
-        scale_slab: float = 2.0,
     ):
         """
         Initialize HorseshoeGLM.
@@ -120,15 +119,39 @@ class HorseshoeGLM:
         Parameters
         ----------
         family : str
-            Distribution family for GLM
-        scale_global : float
-            Global shrinkage parameter (tau)
-        scale_slab : float
-            Slab scale parameter (c) for regularized horseshoe (optional)
+            Distribution family for GLM ('gaussian', 'binomial', or 'poisson')
+            
+        scale_global : float, default=1.0
+            Scale parameter for the global shrinkage (tau) prior.
+            Controls the overall level of sparsity.
+            
+            **Choosing scale_global:**
+            - Rule of thumb: scale_global = p0 / (p - p0) / sqrt(n)
+              where p0 = expected number of relevant features
+                    p = total number of features
+                    n = number of observations
+            
+            - For sparse problems (p0 << p): Use smaller values (0.1 - 0.5)
+            - For dense problems (p0 ≈ p): Use larger values (1.0 - 2.0)
+            - Default of 1.0 works well for moderately sparse problems
+            
+            Examples:
+            - High dimensional sparse (p=1000, p0=10, n=100): ~0.1
+            - Moderate (p=100, p0=20, n=200): ~0.5-1.0
+            - Dense (p=50, p0=30, n=300): ~1.5-2.0
+            
+        Notes
+        -----
+        The regularized horseshoe uses InverseGamma(1, 1) for the slab variance (c²),
+        which provides adaptive regularization automatically.
+        
+        References
+        ----------
+        Piironen, J., & Vehtari, A. (2017). "Sparsity information and regularization
+        in the horseshoe and other shrinkage priors." Electronic Journal of Statistics.
         """
         self.family = family
         self.scale_global = scale_global
-        self.scale_slab = scale_slab
         self.mcmc = None
         self.svi_result = None
         self.X_train = None
@@ -145,7 +168,7 @@ class HorseshoeGLM:
         y : jnp.ndarray, optional
             Response variable
         """
-        n_samples, n_features = X.shape
+        n_features = X.shape[1]
         
         # Global shrinkage parameter
         tau = numpyro.sample("tau", dist.HalfCauchy(self.scale_global))
