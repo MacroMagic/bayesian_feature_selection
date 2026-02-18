@@ -9,6 +9,7 @@ from numpyro.infer import MCMC, NUTS, SVI, Trace_ELBO, autoguide
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
+import warnings
 
 
 @dataclass
@@ -24,6 +25,74 @@ class InferenceConfig:
     # Performance
     use_gpu: bool = True
     progress_bar: bool = True
+    
+    def __post_init__(self):
+        """Validate configuration parameters after initialization."""
+        # Validate MCMC parameters
+        if self.num_warmup <= 0:
+            raise ValueError(
+                f"num_warmup must be positive, got {self.num_warmup}"
+            )
+        
+        if self.num_samples <= 0:
+            raise ValueError(
+                f"num_samples must be positive, got {self.num_samples}"
+            )
+        
+        if self.num_chains <= 0:
+            raise ValueError(
+                f"num_chains must be positive, got {self.num_chains}"
+            )
+        
+        # Validate SVI parameters
+        if self.num_steps <= 0:
+            raise ValueError(
+                f"num_steps must be positive, got {self.num_steps}"
+            )
+        
+        if not 0 < self.learning_rate < 1:
+            raise ValueError(
+                f"learning_rate must be in (0, 1), got {self.learning_rate}"
+            )
+        
+        # Cross-parameter validation
+        if self.method == "mcmc":
+            if self.num_samples < self.num_warmup:
+                raise ValueError(
+                    f"num_samples ({self.num_samples}) should be >= "
+                    f"num_warmup ({self.num_warmup}) for MCMC"
+                )
+            
+            # Warn about potentially slow configurations
+            if self.num_chains > 10:
+                warnings.warn(
+                    f"num_chains={self.num_chains} is high and may be slow. "
+                    "Consider using fewer chains for faster inference.",
+                    UserWarning
+                )
+            
+            if self.num_samples > 10000:
+                warnings.warn(
+                    f"num_samples={self.num_samples} is very high. "
+                    "This may take a long time to run.",
+                    UserWarning
+                )
+        
+        elif self.method == "svi":
+            # Warn about potentially suboptimal SVI configurations
+            if self.num_steps < 1000:
+                warnings.warn(
+                    f"num_steps={self.num_steps} may be too low for SVI convergence. "
+                    "Consider using at least 1000 steps.",
+                    UserWarning
+                )
+            
+            if self.learning_rate > 0.1:
+                warnings.warn(
+                    f"learning_rate={self.learning_rate} is quite high for SVI. "
+                    "Consider using a smaller value (e.g., 0.001-0.01).",
+                    UserWarning
+                )
 
 
 class HorseshoeGLM:
@@ -31,7 +100,7 @@ class HorseshoeGLM:
     Bayesian GLM with horseshoe prior for feature selection.
     
     The horseshoe prior provides strong shrinkage for irrelevant features
-    while keeping relevant features relatively unshrunk.
+    while keeping relevant features relatively at large.
     
     Supports:
     - Linear regression (family='gaussian')
@@ -55,7 +124,7 @@ class HorseshoeGLM:
         scale_global : float
             Global shrinkage parameter (tau)
         scale_slab : float
-            Slab scale parameter
+            Slab scale parameter (c) for regularized horseshoe (optional)
         """
         self.family = family
         self.scale_global = scale_global
