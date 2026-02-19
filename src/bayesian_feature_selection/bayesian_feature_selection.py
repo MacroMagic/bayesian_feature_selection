@@ -179,7 +179,7 @@ class HorseshoeGLM:
             dist.HalfCauchy(jnp.ones(n_features))
         )
         
-        # Regularized horseshoe (optional slab)
+        # Regularized horseshoe slab variance (c²)
         c2 = numpyro.sample("c2", dist.InverseGamma(1.0, 1.0))
         lambda_tilde = jnp.sqrt(
             (c2 * lambda_local**2) / (c2 + tau**2 * lambda_local**2)
@@ -202,8 +202,7 @@ class HorseshoeGLM:
             sigma = numpyro.sample("sigma", dist.HalfNormal(1.0))
             numpyro.sample("y", dist.Normal(eta, sigma), obs=y)
         elif self.family == "binomial":
-            logits = eta
-            numpyro.sample("y", dist.Bernoulli(logits=logits), obs=y)
+            numpyro.sample("y", dist.Bernoulli(logits=eta), obs=y)
         elif self.family == "poisson":
             numpyro.sample("y", dist.Poisson(jnp.exp(eta)), obs=y)
     
@@ -290,19 +289,37 @@ class HorseshoeGLM:
         self.svi_result = svi_result
         self.guide = guide
     
-    def get_feature_importance(self, threshold: float = 0.5) -> pd.DataFrame:
+    def get_feature_importance(
+        self, 
+        threshold: float = 0.5,
+        method: Literal["beta", "lambda", "both"] = "beta"
+    ) -> pd.DataFrame:
         """
         Extract feature importance based on posterior inclusion probabilities.
         
         Parameters
         ----------
         threshold : float
-            Threshold for feature selection (based on |beta| credible interval)
+            Threshold for feature selection
+        method : str
+            Feature selection method:
+            - "beta": Based on coefficient posterior (default, good for effect size)
+            - "lambda": Based on local shrinkage parameter (good for pure noise filtering)
+            - "both": Return both metrics
             
         Returns
         -------
         pd.DataFrame
             Feature importance metrics
+            
+        Notes
+        -----
+        Method comparison:
+        - "beta": Selects features with consistent non-zero effects. Captures both
+          direction and magnitude. Best for prediction and interpretation.
+        - "lambda": Identifies features with weak shrinkage (less noise-like).
+          Pure noise gets lambda ≈ 0, relevant features get lambda >> 0.
+          Better for filtering pure noise without requiring strong effects.
         """
         if self.mcmc is None and self.svi_result is None:
             raise ValueError("Model must be fitted first")
@@ -310,6 +327,7 @@ class HorseshoeGLM:
         if self.mcmc is not None:
             samples = self.mcmc.get_samples()
             beta_samples = samples["beta"]
+            lambda_samples = samples["lambda_local"]
         else:
             # Get posterior samples from SVI
             guide_samples = self.guide.sample_posterior(
@@ -318,35 +336,61 @@ class HorseshoeGLM:
                 sample_shape=(1000,)
             )
             beta_samples = guide_samples["beta"]
+            lambda_samples = guide_samples["lambda_local"]
         
-        # Calculate statistics
+        # Calculate beta statistics
         beta_mean = jnp.mean(beta_samples, axis=0)
         beta_std = jnp.std(beta_samples, axis=0)
-        
-        # Credible intervals
         beta_lower = jnp.percentile(beta_samples, 2.5, axis=0)
         beta_upper = jnp.percentile(beta_samples, 97.5, axis=0)
         
-        # Inclusion probability (CI doesn't contain 0)
-        inclusion_prob = jnp.mean(
-            (beta_lower > 0) | (beta_upper < 0),
-            axis=0
-        )
+        # Calculate lambda statistics
+        lambda_mean = jnp.mean(lambda_samples, axis=0)
+        lambda_median = jnp.median(lambda_samples, axis=0)
         
-        # Feature selection
+        # Beta-based inclusion probability
+        beta_inclusion_prob = jnp.mean(jnp.abs(beta_samples) > 0.01, axis=0)
+        ci_excludes_zero = (beta_lower > 0) | (beta_upper < 0)
+        
+        # Lambda-based inclusion probability
+        lambda_threshold = jnp.median(lambda_samples)
+        lambda_inclusion_prob = jnp.mean(lambda_samples > lambda_threshold, axis=0)
+        
+        # Select method
+        if method == "beta":
+            inclusion_prob = beta_inclusion_prob
+            sort_by = "beta_inclusion_prob"
+        elif method == "lambda":
+            inclusion_prob = lambda_inclusion_prob
+            sort_by = "lambda_inclusion_prob"
+        else:  # "both"
+            # Combined: high beta AND high lambda
+            inclusion_prob = (beta_inclusion_prob + lambda_inclusion_prob) / 2
+            sort_by = "combined_inclusion_prob"
+        
         selected = inclusion_prob > threshold
         
-        importance_df = pd.DataFrame({
+        # Build dataframe
+        df_dict = {
             "feature_idx": range(len(beta_mean)),
             "beta_mean": np.array(beta_mean),
             "beta_std": np.array(beta_std),
             "beta_lower_95": np.array(beta_lower),
             "beta_upper_95": np.array(beta_upper),
-            "inclusion_prob": np.array(inclusion_prob),
+            "beta_inclusion_prob": np.array(beta_inclusion_prob),
+            "ci_excludes_zero": np.array(ci_excludes_zero),
+            "lambda_mean": np.array(lambda_mean),
+            "lambda_median": np.array(lambda_median),
+            "lambda_inclusion_prob": np.array(lambda_inclusion_prob),
             "selected": np.array(selected)
-        })
+        }
         
-        return importance_df.sort_values("inclusion_prob", ascending=False)
+        if method == "both":
+            df_dict["combined_inclusion_prob"] = np.array(inclusion_prob)
+        
+        importance_df = pd.DataFrame(df_dict)
+        
+        return importance_df.sort_values(sort_by, ascending=False)
     
     def predict(
         self,
