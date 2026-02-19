@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS, SVI, Trace_ELBO, autoguide
+from numpyro.infer import MCMC, NUTS, SVI, Trace_ELBO, autoguide, Predictive
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
@@ -412,7 +412,6 @@ class HorseshoeGLM:
         np.ndarray
             Predictions (mean or samples)
         """
-        from numpyro.infer import Predictive
         
         X_new_jax = jnp.array(X_new)
         
