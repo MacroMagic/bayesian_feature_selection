@@ -1,0 +1,31 @@
+# Example configuration with data paths specified
+# Copy this and modify for your specific project
+
+data:
+  data_path: "data/my_dataset.csv"
+  target_col: "target"
+  feature_cols: null  # Use all features except target
+  test_size: 0.2
+  standardize: true
+  random_seed: 42
+
+model:
+  family: "gaussian"
+  scale_global: 1.0
+
+inference:
+  method: "mcmc"
+  num_warmup: 1000
+  num_samples: 2000
+  num_chains: 4
+  use_gpu: true
+  progress_bar: true
+
+selection:
+  method: "beta"
+  threshold: 0.5
+
+output:
+  save_plots: true
+  save_diagnostics: true
+  save_samples: false

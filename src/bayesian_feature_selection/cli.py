@@ -3,13 +3,12 @@ import typer
 from rich.console import Console
 from rich.table import Table
 from pathlib import Path
-import pandas as pd
-import numpy as np
 from typing import Optional
 
 from .bayesian_feature_selection import HorseshoeGLM
 from .visualization import plot_feature_importance, plot_diagnostics
 from .config import ExperimentConfig
+from .data_loader import DataLoader
 
 app = typer.Typer()
 console = Console()
@@ -17,37 +16,38 @@ console = Console()
 
 @app.command()
 def main(
-    data_path: Path = typer.Argument(..., help="Path to CSV data file"),
-    target_col: str = typer.Argument(..., help="Target column name"),
     config_path: Optional[Path] = typer.Option(
         None, 
         "--config", 
         "-c",
-        help="Path to YAML config file (default: configs/default.yaml)"
+        help="Path to YAML config file (required or use default)"
     ),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
         "-o", 
-        help="Output directory (overrides config)"
+        help="Output directory (default: ./results)"
     ),
     # Quick overrides for common parameters
-    family: Optional[str] = typer.Option(None, help="GLM family (overrides config)"),
-    method: Optional[str] = typer.Option(None, help="Inference method (overrides config)"),
-    use_gpu: Optional[bool] = typer.Option(None, help="Use GPU (overrides config)"),
+    family: Optional[str] = typer.Option(None, "--family", help="GLM family (overrides config)"),
+    method: Optional[str] = typer.Option(None, "--method", help="Inference method (overrides config)"),
+    use_gpu: Optional[bool] = typer.Option(None, "--use-gpu", help="Use GPU (overrides config)"),
 ):
     """
     Fit Bayesian GLM with horseshoe prior for feature selection.
     
     Examples:
-        # Use default config
-        bayesian-feature-selection data.csv target_column
+        # Use config file with data paths specified
+        bayesian-feature-selection -c configs/example_with_data.yaml
         
-        # Use custom config
-        bayesian-feature-selection data.csv target_column -c configs/sparse_highdim.yaml
+        # Use default config (must have data paths set)
+        bayesian-feature-selection
         
-        # Override specific parameters
-        bayesian-feature-selection data.csv target_column -c configs/default.yaml --family binomial
+        # Override model parameters
+        bayesian-feature-selection -c configs/default.yaml --family binomial --method svi
+        
+        # Specify output directory
+        bayesian-feature-selection -c configs/my_experiment.yaml -o results/experiment1
     """
     # Load configuration
     if config_path is None:
@@ -72,17 +72,23 @@ def main(
     if use_gpu is not None:
         config.inference.use_gpu = use_gpu
     
+    # Validate data config
+    if config.data.data_path is None:
+        console.print("[bold red]Error: data_path must be specified in config or command line[/bold red]")
+        raise typer.Exit(1)
+    if config.data.target_col is None:
+        console.print("[bold red]Error: target_col must be specified in config or command line[/bold red]")
+        raise typer.Exit(1)
+    
     # Set output directory
     if output_dir is None:
         output_dir = Path("./results")
     
-    console.print(f"[bold blue]Loading data from {data_path}...[/bold blue]")
+    console.print(f"[bold blue]Loading data from {config.data.data_path}...[/bold blue]")
     
-    # Load data
-    df = pd.read_csv(data_path)
-    y = df[target_col].values
-    X = df.drop(columns=[target_col]).values
-    feature_names = df.drop(columns=[target_col]).columns.tolist()
+    # Load data using DataLoader
+    data_loader = DataLoader(config.data)
+    X, y, feature_names = data_loader.load_data()
     
     console.print(f"Data shape: {X.shape[0]} samples, {X.shape[1]} features")
     

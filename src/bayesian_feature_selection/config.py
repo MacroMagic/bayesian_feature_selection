@@ -1,10 +1,21 @@
 """Configuration management for bayesian_feature_selection."""
 
 from dataclasses import dataclass, field, asdict
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, List
 from pathlib import Path
 import yaml
 import warnings
+
+
+@dataclass
+class DataConfig:
+    """Data configuration."""
+    data_path: Optional[str] = None
+    target_col: Optional[str] = None
+    feature_cols: Optional[List[str]] = None  # If None, use all except target
+    test_size: float = 0.0  # Fraction for test split (0 = no split)
+    standardize: bool = False  # Standardize features
+    random_seed: int = 42
 
 
 @dataclass
@@ -115,6 +126,7 @@ class OutputConfig:
 @dataclass
 class ExperimentConfig:
     """Complete experiment configuration."""
+    data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     inference: InferenceConfig = field(default_factory=InferenceConfig)
     selection: SelectionConfig = field(default_factory=SelectionConfig)
@@ -126,12 +138,14 @@ class ExperimentConfig:
         with open(yaml_path, 'r') as f:
             config_dict = yaml.safe_load(f)
         
+        data_cfg = DataConfig(**config_dict.get("data", {}))
         model_cfg = ModelConfig(**config_dict.get("model", {}))
         inference_cfg = InferenceConfig(**config_dict.get("inference", {}))
         selection_cfg = SelectionConfig(**config_dict.get("selection", {}))
         output_cfg = OutputConfig(**config_dict.get("output", {}))
         
         return cls(
+            data=data_cfg,
             model=model_cfg,
             inference=inference_cfg,
             selection=selection_cfg,
@@ -142,6 +156,7 @@ class ExperimentConfig:
         """Save configuration to YAML file."""
         
         config_dict = {
+            "data": asdict(self.data),
             "model": asdict(self.model),
             "inference": asdict(self.inference),
             "selection": asdict(self.selection),

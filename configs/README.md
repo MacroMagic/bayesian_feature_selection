@@ -20,14 +20,11 @@ Optimized for high-dimensional sparse problems.
 ## Usage
 
 ```bash
-# Use default config
-bayesian-feature-selection data.csv target_column
+# Specify data in config file
+bayesian-feature-selection -c configs/example_with_data.yaml
 
-# Use custom config
-bayesian-feature-selection data.csv target_column -c configs/sparse_highdim.yaml
-
-# Override specific parameters
-bayesian-feature-selection data.csv target_column -c configs/default.yaml --family binomial
+# Mix of config and CLI arguments
+bayesian-feature-selection -c configs/sparse_highdim.yaml --family binomial
 ```
 
 ## Creating Custom Configs
@@ -37,12 +34,20 @@ Copy and modify an existing config:
 ```bash
 cp configs/default.yaml configs/my_experiment.yaml
 # Edit my_experiment.yaml
-bayesian-feature-selection data.csv target -c configs/my_experiment.yaml
+bayesian-feature-selection -c configs/my_experiment.yaml
 ```
 
 ## Configuration Structure
 
 ```yaml
+data:
+  data_path: "data.csv"   # Path to CSV file (required)
+  target_col: "target"    # Target column name (required)
+  feature_cols: null      # Specific features (null = all except target)
+  test_size: 0.0          # Train/test split fraction (0 = no split)
+  standardize: false      # Standardize features to mean=0, std=1
+  random_seed: 42         # Random seed for reproducibility
+
 model:
   family: "gaussian"      # gaussian, binomial, poisson
   scale_global: 1.0       # Global shrinkage (tau scale)
@@ -68,6 +73,14 @@ output:
 ```
 
 ## Parameter Guidelines
+
+### `data.standardize`
+- **true**: Recommended for high-dimensional data or when features have different scales
+- **false**: Use when features already normalized or for interpretability
+
+### `data.test_size`
+- **0.0**: No split, use all data for training (default)
+- **0.2-0.3**: Typical test set size for model evaluation
 
 ### `scale_global`
 - **Sparse** (few relevant features): 0.1 - 0.5

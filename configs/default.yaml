@@ -1,5 +1,14 @@
 # Default configuration for Bayesian Feature Selection
 
+# Data configuration
+data:
+  data_path: null          # Path to CSV file (required)
+  target_col: null         # Target column name (required)
+  feature_cols: null       # Specific features to use (null = use all except target)
+  test_size: 0.0           # Test set fraction (0 = no split)
+  standardize: false       # Standardize features
+  random_seed: 42          # Random seed for reproducibility
+
 # Model configuration
 model:
   family: "binomial"  # gaussian, binomial, or poisson

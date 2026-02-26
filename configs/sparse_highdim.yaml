@@ -1,6 +1,12 @@
 # High-dimensional sparse problem example
 # Use when: many features (p > 100), few relevant (p0 < 10)
 
+data:
+  data_path: null  # Specify in command line or override
+  target_col: null
+  standardize: true  # Recommended for high-dimensional data
+  test_size: 0.2     # Hold out 20% for testing
+
 model:
   family: "gaussian"
   scale_global: 0.1  # Small value for sparse problems

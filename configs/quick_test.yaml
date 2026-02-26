@@ -1,5 +1,11 @@
 # Quick test configuration - fast inference for development/testing
 
+data:
+  data_path: null
+  target_col: null
+  standardize: false
+  test_size: 0.0
+
 model:
   family: "gaussian"
   scale_global: 1.0

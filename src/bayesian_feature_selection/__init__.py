@@ -11,7 +11,9 @@ from .config import (
     ModelConfig,
     SelectionConfig,
     OutputConfig,
+    DataConfig,
 )
+from .data_loader import DataLoader, load_data_from_config
 
 __all__ = [
     "HorseshoeGLM",
@@ -20,4 +22,7 @@ __all__ = [
     "ModelConfig",
     "SelectionConfig",
     "OutputConfig",
+    "DataConfig",
+    "DataLoader",
+    "load_data_from_config",
 ]
