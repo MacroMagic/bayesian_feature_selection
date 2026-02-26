@@ -1,0 +1,28 @@
+# Default configuration for Bayesian Feature Selection
+
+# Model configuration
+model:
+  family: "binomial"  # gaussian, binomial, or poisson
+  scale_global: 1.0   # Global shrinkage scale (tau)
+
+# Inference configuration
+inference:
+  method: "mcmc"           # mcmc or svi
+  num_warmup: 1000         # MCMC warmup samples
+  num_samples: 2000        # MCMC samples
+  num_chains: 4            # MCMC chains
+  num_steps: 10000         # SVI steps
+  learning_rate: 0.001     # SVI learning rate
+  use_gpu: true            # Use GPU if available
+  progress_bar: true       # Show progress
+
+# Feature selection
+selection:
+  method: "lambda"      # beta, lambda, or both
+  threshold: 0.5      # Inclusion probability threshold
+
+# Output
+output:
+  save_plots: true
+  save_diagnostics: true
+  save_samples: false  # Save posterior samples (large files)

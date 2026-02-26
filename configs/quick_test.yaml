@@ -1,0 +1,22 @@
+# Quick test configuration - fast inference for development/testing
+
+model:
+  family: "gaussian"
+  scale_global: 1.0
+
+inference:
+  method: "mcmc"
+  num_warmup: 100     # Very short for quick testing
+  num_samples: 200    # Just enough to check it works
+  num_chains: 2       # Fewer chains
+  use_gpu: false      # CPU for compatibility
+  progress_bar: true
+
+selection:
+  method: "beta"
+  threshold: 0.5
+
+output:
+  save_plots: true
+  save_diagnostics: false  # Skip to save time
+  save_samples: false

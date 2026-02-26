@@ -7,29 +7,75 @@ import pandas as pd
 import numpy as np
 from typing import Optional
 
-from .bayesian_feature_selection import HorseshoeGLM, InferenceConfig
+from .bayesian_feature_selection import HorseshoeGLM
 from .visualization import plot_feature_importance, plot_diagnostics
+from .config import ExperimentConfig
 
 app = typer.Typer()
 console = Console()
 
 
 @app.command()
-def fit(
+def main(
     data_path: Path = typer.Argument(..., help="Path to CSV data file"),
-    target_col: str = typer.Option(..., help="Target column name"),
-    output_dir: Path = typer.Option("./results", help="Output directory"),
-    family: str = typer.Option("gaussian", help="GLM family: gaussian, binomial, poisson"),
-    method: str = typer.Option("mcmc", help="Inference method: mcmc or svi"),
-    num_samples: int = typer.Option(2000, help="Number of MCMC samples"),
-    num_warmup: int = typer.Option(1000, help="Number of warmup samples"),
-    num_chains: int = typer.Option(4, help="Number of MCMC chains"),
-    threshold: float = typer.Option(0.5, help="Feature selection threshold"),
-    use_gpu: bool = typer.Option(True, help="Use GPU if available"),
+    target_col: str = typer.Argument(..., help="Target column name"),
+    config_path: Optional[Path] = typer.Option(
+        None, 
+        "--config", 
+        "-c",
+        help="Path to YAML config file (default: configs/default.yaml)"
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o", 
+        help="Output directory (overrides config)"
+    ),
+    # Quick overrides for common parameters
+    family: Optional[str] = typer.Option(None, help="GLM family (overrides config)"),
+    method: Optional[str] = typer.Option(None, help="Inference method (overrides config)"),
+    use_gpu: Optional[bool] = typer.Option(None, help="Use GPU (overrides config)"),
 ):
     """
     Fit Bayesian GLM with horseshoe prior for feature selection.
+    
+    Examples:
+        # Use default config
+        bayesian-feature-selection data.csv target_column
+        
+        # Use custom config
+        bayesian-feature-selection data.csv target_column -c configs/sparse_highdim.yaml
+        
+        # Override specific parameters
+        bayesian-feature-selection data.csv target_column -c configs/default.yaml --family binomial
     """
+    # Load configuration
+    if config_path is None:
+        # Use default config
+        default_config = Path(__file__).parent.parent.parent / "configs" / "default.yaml"
+        if default_config.exists():
+            config = ExperimentConfig.from_yaml(default_config)
+            console.print(f"[dim]Using default config: {default_config}[/dim]")
+        else:
+            # Fallback to code defaults
+            config = ExperimentConfig()
+            console.print("[dim]Using built-in defaults[/dim]")
+    else:
+        config = ExperimentConfig.from_yaml(config_path)
+        console.print(f"[bold blue]Loaded config from {config_path}[/bold blue]")
+    
+    # Apply CLI overrides
+    if family is not None:
+        config.model.family = family
+    if method is not None:
+        config.inference.method = method
+    if use_gpu is not None:
+        config.inference.use_gpu = use_gpu
+    
+    # Set output directory
+    if output_dir is None:
+        output_dir = Path("./results")
+    
     console.print(f"[bold blue]Loading data from {data_path}...[/bold blue]")
     
     # Load data
@@ -40,35 +86,50 @@ def fit(
     
     console.print(f"Data shape: {X.shape[0]} samples, {X.shape[1]} features")
     
-    # Configure inference
-    config = InferenceConfig(
-        method=method,
-        num_samples=num_samples,
-        num_warmup=num_warmup,
-        num_chains=num_chains,
-        use_gpu=use_gpu
-    )
+    # Display configuration summary
+    console.print(f"\n[bold]Configuration:[/bold]")
+    console.print(f"  Model: {config.model.family}, scale_global={config.model.scale_global}")
+    console.print(f"  Inference: {config.inference.method}, samples={config.inference.num_samples}")
+    console.print(f"  Selection: method={config.selection.method}, threshold={config.selection.threshold}")
     
     # Fit model
-    console.print(f"[bold green]Fitting {family} GLM with {method.upper()}...[/bold green]")
-    model = HorseshoeGLM(family=family)
-    model.fit(X, y, config=config)
+    console.print(f"\n[bold green]Fitting {config.model.family} GLM with {config.inference.method.upper()}...[/bold green]")
+    model = HorseshoeGLM(
+        family=config.model.family,
+        scale_global=config.model.scale_global
+    )
+    model.fit(X, y, config=config.inference)
     
     # Get feature importance
-    importance = model.get_feature_importance(threshold=threshold)
+    importance = model.get_feature_importance(
+        threshold=config.selection.threshold,
+        method=config.selection.method
+    )
     importance["feature_name"] = [feature_names[i] for i in importance["feature_idx"]]
     
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    # Save configuration used for this run
+    config.to_yaml(output_dir / "config.yaml")
+    
     # Save results
     importance.to_csv(output_dir / "feature_importance.csv", index=False)
-    console.print(f"[bold green]Results saved to {output_dir}[/bold green]")
+    console.print(f"\n[bold green]Results saved to {output_dir}[/bold green]")
     
     # Display summary
     table = Table(title="Selected Features")
     table.add_column("Feature", style="cyan")
     table.add_column("Beta (Mean)", style="magenta")
+    
+    # Determine which inclusion prob to show
+    if config.selection.method == "beta":
+        inc_col = "beta_inclusion_prob"
+    elif config.selection.method == "lambda":
+        inc_col = "lambda_inclusion_prob"
+    else:
+        inc_col = "combined_inclusion_prob"
+    
     table.add_column("Inclusion Prob", style="green")
     
     selected_features = importance[importance["selected"]]
@@ -76,31 +137,22 @@ def fit(
         table.add_row(
             row["feature_name"],
             f"{row['beta_mean']:.4f}",
-            f"{row['inclusion_prob']:.4f}"
+            f"{row[inc_col]:.4f}"
         )
     
     console.print(table)
+    console.print(f"\nSelected {len(selected_features)} out of {len(importance)} features")
     
     # Generate plots
-    if method == "mcmc":
+    if config.output.save_plots:
+        console.print("\n[bold blue]Generating plots...[/bold blue]")
+        plot_feature_importance(importance, output_dir, feature_names)
+    
+    if config.output.save_diagnostics and config.inference.method == "mcmc":
         console.print("[bold blue]Generating diagnostic plots...[/bold blue]")
         plot_diagnostics(model.mcmc, output_dir)
     
-    plot_feature_importance(importance, output_dir, feature_names)
-    console.print(f"[bold green]Plots saved to {output_dir}[/bold green]")
-
-
-@app.command()
-def predict(
-    model_path: Path = typer.Argument(..., help="Path to saved model"),
-    data_path: Path = typer.Argument(..., help="Path to new data CSV"),
-    output_path: Path = typer.Option("predictions.csv", help="Output predictions path"),
-):
-    """
-    Make predictions using fitted model.
-    """
-    console.print("[bold yellow]Prediction command - to be implemented[/bold yellow]")
-
+    console.print(f"[bold green]✓ Complete! Results in {output_dir}[/bold green]")
 
 if __name__ == "__main__":
     app()

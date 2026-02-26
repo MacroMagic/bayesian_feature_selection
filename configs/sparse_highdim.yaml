@@ -1,0 +1,22 @@
+# High-dimensional sparse problem example
+# Use when: many features (p > 100), few relevant (p0 < 10)
+
+model:
+  family: "gaussian"
+  scale_global: 0.1  # Small value for sparse problems
+
+inference:
+  method: "svi"      # Faster for high-dimensional
+  num_steps: 15000
+  learning_rate: 0.005
+  use_gpu: true
+  progress_bar: true
+
+selection:
+  method: "lambda"    # Better for filtering pure noise
+  threshold: 0.3
+
+output:
+  save_plots: true
+  save_diagnostics: false
+  save_samples: false
