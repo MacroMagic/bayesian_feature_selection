@@ -9,15 +9,12 @@ import numpyro
 
 numpyro.set_platform("cpu")
 
-from bayesian_feature_selection import (
+from bayesian_feature_selection import (  # noqa: E402
     HorseshoeGLM,
     DataLoader,
     InferenceConfig,
     DataConfig,
     ExperimentConfig,
-    ModelConfig,
-    SelectionConfig,
-    OutputConfig,
 )
 
 # ---------------------------------------------------------------------------
@@ -77,7 +74,7 @@ def _make_classification_csv(path, n_samples=20, n_features=5, seed=42):
 def test_full_gaussian_mcmc_pipeline(tmp_path):
     """End-to-end Gaussian regression with MCMC inference."""
     csv_path = tmp_path / "regression.csv"
-    feat_cols = _make_regression_csv(csv_path, n_samples=20, n_features=5, n_relevant=2)
+    _make_regression_csv(csv_path, n_samples=20, n_features=5, n_relevant=2)
 
     # Load data
     data_cfg = DataConfig(data_path=str(csv_path), target_col="target")

@@ -5,7 +5,6 @@
 import pytest
 
 
-from bayesian_feature_selection import bayesian_feature_selection
 
 
 @pytest.fixture

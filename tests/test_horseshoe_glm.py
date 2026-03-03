@@ -9,7 +9,7 @@ import numpyro
 
 numpyro.set_platform("cpu")
 
-from bayesian_feature_selection import HorseshoeGLM, InferenceConfig
+from bayesian_feature_selection import HorseshoeGLM, InferenceConfig  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
