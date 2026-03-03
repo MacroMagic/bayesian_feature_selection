@@ -232,6 +232,7 @@ class HorseshoeGLM:
         Notes
         -----
         Method comparison:
+
         - "beta": Selects features with consistent non-zero effects. Captures both
           direction and magnitude. Best for prediction and interpretation.
         - "lambda": Identifies features with weak shrinkage (less noise-like).
