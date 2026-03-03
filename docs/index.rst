@@ -8,6 +8,9 @@ Welcome to bayesian feature selection's documentation!
    readme
    installation
    usage
+   tutorial
+   methodology
+   api
    modules
    contributing
    authors

@@ -44,7 +44,39 @@ Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
 
-    $ python setup.py install
+    $ pip install .
+
+
+Development installation
+------------------------
+
+To install the package in development mode with all dev dependencies:
+
+.. code-block:: console
+
+    $ git clone git://github.com/MacroMagic/bayesian_feature_selection
+    $ cd bayesian_feature_selection
+    $ pip install -e ".[dev]"
+
+This installs the package in editable mode so that changes to the source code
+take effect immediately.
+
+
+GPU support
+-----------
+
+To enable GPU acceleration (requires a CUDA-compatible GPU and drivers):
+
+.. code-block:: console
+
+    $ pip install -e ".[gpu]"
+
+This installs the GPU-enabled version of JAX. Verify GPU availability in Python:
+
+.. code-block:: python
+
+    import jax
+    print(jax.devices())  # Should list GPU devices
 
 
 .. _Github repo: https://github.com/MacroMagic/bayesian_feature_selection
