@@ -1,5 +1,5 @@
 Welcome to bayesian feature selection's documentation!
-======================================
+======================================================
 
 .. toctree::
    :maxdepth: 2
@@ -8,7 +8,9 @@ Welcome to bayesian feature selection's documentation!
    readme
    installation
    usage
-   modules
+   tutorial
+   methodology
+   api
    contributing
    authors
    history

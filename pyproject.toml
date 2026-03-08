@@ -70,6 +70,11 @@ strict = true
 warn_unreachable = true
 warn_no_return = true
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: end-to-end integration tests",
+]
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 allow_untyped_defs = true

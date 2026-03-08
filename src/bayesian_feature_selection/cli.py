@@ -93,7 +93,7 @@ def main(
     console.print(f"Data shape: {X.shape[0]} samples, {X.shape[1]} features")
     
     # Display configuration summary
-    console.print(f"\n[bold]Configuration:[/bold]")
+    console.print("\n[bold]Configuration:[/bold]")
     console.print(f"  Model: {config.model.family}, scale_global={config.model.scale_global}")
     console.print(f"  Inference: {config.inference.method}, samples={config.inference.num_samples}")
     console.print(f"  Selection: method={config.selection.method}, threshold={config.selection.threshold}")
