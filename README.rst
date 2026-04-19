@@ -88,6 +88,42 @@ For development:
     $ pip install -e ".[dev]"
 
 
+Environment Setup (Python 3.12 + CUDA 12)
+------------------------------------------
+
+**Python 3.12 (CPU only)**
+
+.. code-block:: console
+
+    $ pip install bayesian_feature_selection
+
+This installs JAX ≥ 0.7.0 and NumPyro ≥ 0.15.0 automatically.
+
+**Python 3.12 + CUDA 12 (GPU)**
+
+Install the package, then upgrade JAX with the CUDA 12 backend:
+
+.. code-block:: console
+
+    $ pip install bayesian_feature_selection
+    $ pip install "jax[cuda12]"
+
+Verify the setup:
+
+.. code-block:: python
+
+    import jax
+    print(jax.devices())  # should show CudaDevice(id=0) when GPU is available
+
+**Important version notes**
+
+* NumPyro ≥ 0.15.0 requires JAX ≥ 0.7.0.
+* JAX ≥ 0.10.0 removed internal symbols that NumPyro ≤ 0.20.1 depends on;
+  use JAX 0.7.x – 0.9.x until NumPyro releases a compatible update.
+* The ``gpu`` extra (``pip install bayesian_feature_selection[gpu]``) installs
+  ``jax[cuda12]`` and is the recommended way to enable GPU support.
+
+
 Credits
 -------
 
