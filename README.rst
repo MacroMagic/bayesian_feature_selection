@@ -19,7 +19,7 @@ the regularized horseshoe prior, which provides strong shrinkage for irrelevant
 features while preserving truly relevant signals.
 
 * Free software: MIT license
-* Documentation: https://bayesian-feature-selection.readthedocs.io.
+* Documentation: https://macromagic.github.io/bayesian_feature_selection/
 
 
 Features
