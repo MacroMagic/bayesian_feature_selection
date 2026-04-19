@@ -19,7 +19,30 @@
 #
 import os
 import sys
+from unittest.mock import MagicMock
+
 sys.path.insert(0, os.path.abspath('../src'))
+
+# Mock heavy C-extension dependencies so Sphinx can import the package without
+# requiring a full JAX / NumPyro installation in the docs build environment.
+_MOCK_MODULES = [
+    'jax', 'jax.numpy', 'jax.random', 'jax.scipy', 'jax.scipy.special',
+    'jaxlib',
+    'numpyro', 'numpyro.distributions', 'numpyro.infer', 'numpyro.primitives',
+    'numpyro.util',
+    'optax',
+    'arviz',
+    'sklearn', 'sklearn.preprocessing', 'sklearn.model_selection',
+    'pandas',
+    'numpy',
+    'matplotlib', 'matplotlib.pyplot', 'matplotlib.ticker',
+    'seaborn',
+    'yaml',
+    'typer',
+    'rich', 'rich.console', 'rich.progress',
+]
+for _mod_name in _MOCK_MODULES:
+    sys.modules.setdefault(_mod_name, MagicMock())
 
 import bayesian_feature_selection
 
@@ -31,7 +54,18 @@ import bayesian_feature_selection
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+]
+
+# Mock imports for autodoc (complements the sys.modules mocking above)
+autodoc_mock_imports = [
+    'jax', 'jaxlib', 'numpyro', 'optax', 'arviz',
+    'sklearn', 'pandas', 'numpy', 'matplotlib', 'seaborn',
+    'yaml', 'typer', 'rich',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
