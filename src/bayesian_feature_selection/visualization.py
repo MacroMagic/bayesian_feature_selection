@@ -12,7 +12,8 @@ def plot_feature_importance(
     importance_df: pd.DataFrame,
     output_dir: Path,
     feature_names: Optional[List[str]] = None,
-    top_n: int = 20
+    top_n: int = 20,
+    method: str = "beta",
 ):
     """
     Plot feature importance with credible intervals.
@@ -27,6 +28,9 @@ def plot_feature_importance(
         Feature names
     top_n : int
         Number of top features to plot
+    method : str
+        Feature selection method used ('beta', 'lambda', or 'both').
+        Determines which inclusion probability column to display.
     """
     # Select top features
     top_features = importance_df.head(top_n).copy()
@@ -81,7 +85,14 @@ def plot_feature_importance(
     fig, ax = plt.subplots(figsize=(10, 8))
     
     colors = top_features["selected"].map({True: "green", False: "red"})
-    ax.barh(y_pos, top_features["inclusion_prob"], color=colors, alpha=0.6)
+    # Select the correct inclusion-probability column based on the method used
+    if method == "lambda":
+        inc_col = "lambda_inclusion_prob"
+    elif method == "both":
+        inc_col = "combined_inclusion_prob"
+    else:  # default: "beta"
+        inc_col = "beta_inclusion_prob"
+    ax.barh(y_pos, top_features[inc_col], color=colors, alpha=0.6)
     
     ax.set_yticks(y_pos)
     if feature_names is not None:

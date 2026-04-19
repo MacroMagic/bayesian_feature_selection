@@ -20,14 +20,15 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 license = {text = "MIT license"}
 dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
-    "numpyro>=0.13.0",
-    "jax>=0.4.0",
-    "jaxlib>=0.4.0",
+    "numpyro>=0.15.0",
+    "jax>=0.7.0",
+    "jaxlib>=0.7.0",
     "arviz>=0.16.0",
     "pandas>=2.0.0",
     "numpy>=1.24.0",
@@ -47,7 +48,7 @@ dev = [
     "ipython",
 ]
 gpu = [
-    "jax[cuda12_pip]",
+    "jax[cuda12]",
 ]
 
 [project.scripts]
